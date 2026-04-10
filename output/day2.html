@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>THEMIS-CORE — Day 2 Judicial Proceedings</title>
+  <meta name="description" content="統合司法AI Themis-Core 第2日審議記録">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Noto+Sans+JP:wght@300;400;700&display=swap');
+
+    :root {
+      --bg-primary: #050510;
+      --bg-secondary: #0a0a1a;
+      --bg-panel: rgba(10, 15, 30, 0.85);
+      --cyan: #00e5ff;
+      --magenta: #ff00e5;
+      --gold: #ffd700;
+      --green: #00ff41;
+      --red: #ff3e3e;
+      --text: #c8d0e0;
+      --text-dim: #5a6580;
+      --border: #1a2040;
+      --glow-cyan: 0 0 15px rgba(0, 229, 255, 0.4);
+      --glow-magenta: 0 0 15px rgba(255, 0, 229, 0.4);
+      --glow-gold: 0 0 15px rgba(255, 215, 0, 0.4);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text);
+      font-family: 'JetBrains Mono', 'Noto Sans JP', monospace;
+      font-size: 14px;
+      line-height: 1.8;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* === Scanline Overlay === */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.08) 2px,
+        rgba(0, 0, 0, 0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* === Background Grid === */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image:
+        linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* === Container === */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 30px 20px;
+    }
+
+    /* === System Header === */
+    .system-header {
+      text-align: center;
+      padding: 40px 20px;
+      margin-bottom: 40px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(0, 229, 255, 0.05) 0%, transparent 100%);
+      position: relative;
+    }
+
+    .system-header::before {
+      content: '── CLASSIFIED ── CLASSIFIED ── CLASSIFIED ── CLASSIFIED ──';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      font-size: 10px;
+      color: var(--red);
+      opacity: 0.4;
+      letter-spacing: 2px;
+      padding: 4px;
+      background: rgba(255, 62, 62, 0.05);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .system-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--cyan);
+      text-shadow: var(--glow-cyan);
+      letter-spacing: 6px;
+      margin-bottom: 8px;
+    }
+
+    .system-subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 4px;
+    }
+
+    .day-badge {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 6px 24px;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-shadow: var(--glow-gold);
+    }
+
+    /* === Section Panels === */
+    .panel {
+      margin-bottom: 32px;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      backdrop-filter: blur(8px);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 12px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .panel-header .icon {
+      font-size: 16px;
+    }
+
+    .panel-body {
+      padding: 20px;
+      word-wrap: break-word;
+      font-size: 13px;
+      line-height: 1.9;
+    }
+
+    /* === Markdown Rendered Elements === */
+    .panel-body h1, .panel-body h2, .panel-body h3, .panel-body h4 {
+      color: inherit;
+      margin: 1.2em 0 0.5em 0;
+      line-height: 1.4;
+    }
+    .panel-body h1 { font-size: 1.3em; }
+    .panel-body h2 { font-size: 1.15em; }
+    .panel-body h3 { font-size: 1.05em; }
+    .panel-body h4 { font-size: 1em; opacity: 0.9; }
+
+    .panel-body p {
+      margin: 0.6em 0;
+    }
+
+    .panel-body strong {
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .panel-body em {
+      font-style: italic;
+      opacity: 0.9;
+    }
+
+    .panel-body ul, .panel-body ol {
+      margin: 0.5em 0 0.5em 1.5em;
+      padding: 0;
+    }
+
+    .panel-body li {
+      margin: 0.3em 0;
+    }
+
+    .panel-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1em 0;
+      font-size: 12px;
+    }
+
+    .panel-body th {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .panel-body td {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 8px 12px;
+    }
+
+    .panel-body tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .panel-body hr {
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      margin: 1.5em 0;
+    }
+
+    .panel-body code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+
+    .panel-body pre {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+
+    .panel-body blockquote {
+      border-left: 3px solid rgba(255, 255, 255, 0.2);
+      padding-left: 16px;
+      margin: 1em 0;
+      opacity: 0.85;
+    }
+
+    /* Module-specific strong colors */
+    .panel.module-a .panel-body strong { color: var(--cyan); }
+    .panel.module-b .panel-body strong { color: var(--magenta); }
+    .panel.judge .panel-body strong { color: var(--gold); }
+    .panel.case-file .panel-body strong { color: var(--green); }
+
+    /* Module A — Cyan */
+    .panel.module-a { border-color: rgba(0, 229, 255, 0.3); }
+    .panel.module-a .panel-header {
+      background: linear-gradient(90deg, rgba(0, 229, 255, 0.15), transparent);
+      color: var(--cyan);
+      border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+    }
+
+    /* Module B — Magenta */
+    .panel.module-b { border-color: rgba(255, 0, 229, 0.3); }
+    .panel.module-b .panel-header {
+      background: linear-gradient(90deg, rgba(255, 0, 229, 0.15), transparent);
+      color: var(--magenta);
+      border-bottom: 1px solid rgba(255, 0, 229, 0.2);
+    }
+
+    /* Judge — Gold */
+    .panel.judge { border-color: rgba(255, 215, 0, 0.3); }
+    .panel.judge .panel-header {
+      background: linear-gradient(90deg, rgba(255, 215, 0, 0.15), transparent);
+      color: var(--gold);
+      border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+    }
+
+    /* Case — Green */
+    .panel.case-file { border-color: rgba(0, 255, 65, 0.3); }
+    .panel.case-file .panel-header {
+      background: linear-gradient(90deg, rgba(0, 255, 65, 0.15), transparent);
+      color: var(--green);
+      border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+    }
+
+    /* === Separator === */
+    .separator {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 11px;
+      letter-spacing: 6px;
+      margin: 32px 0;
+      opacity: 0.5;
+    }
+
+    /* === Footer === */
+    .system-footer {
+      text-align: center;
+      padding: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 11px;
+      letter-spacing: 2px;
+      margin-top: 40px;
+    }
+
+    /* === Cursor Blink === */
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 16px;
+      background: var(--cyan);
+      animation: blink 1s step-end infinite;
+      vertical-align: text-bottom;
+      margin-left: 4px;
+    }
+
+    /* === Index Page Specific === */
+    .day-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      margin-top: 32px;
+    }
+
+    .day-card {
+      display: block;
+      padding: 20px 24px;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .day-card:hover {
+      border-color: var(--cyan);
+      box-shadow: var(--glow-cyan);
+      transform: translateX(4px);
+    }
+
+    .day-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+    }
+
+    .day-card.phase-initial::before { background: var(--cyan); }
+    .day-card.phase-learning::before { background: var(--magenta); }
+    .day-card.phase-mature::before { background: var(--gold); }
+    .day-card.phase-final::before { background: var(--green); }
+
+    .day-card .day-number {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 3px;
+    }
+
+    .day-card.phase-initial .day-number { color: var(--cyan); }
+    .day-card.phase-learning .day-number { color: var(--magenta); }
+    .day-card.phase-mature .day-number { color: var(--gold); }
+    .day-card.phase-final .day-number { color: var(--green); }
+
+    .day-card .case-title {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 6px;
+    }
+
+    /* === Phase Labels === */
+    .phase-label {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 10px;
+      letter-spacing: 2px;
+      border: 1px solid;
+      margin-top: 8px;
+    }
+
+    .phase-label.initial { color: var(--cyan); border-color: rgba(0, 229, 255, 0.4); }
+    .phase-label.learning { color: var(--magenta); border-color: rgba(255, 0, 229, 0.4); }
+    .phase-label.mature { color: var(--gold); border-color: rgba(255, 215, 0, 0.4); }
+    .phase-label.final { color: var(--green); border-color: rgba(0, 255, 65, 0.4); }
+
+    /* === Progress Bar === */
+    .progress-container {
+      margin: 32px 0;
+      padding: 20px;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+    }
+
+    .progress-title {
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 3px;
+      margin-bottom: 12px;
+    }
+
+    .progress-bar {
+      display: flex;
+      height: 4px;
+      background: var(--border);
+      overflow: hidden;
+      gap: 2px;
+    }
+
+    .progress-segment {
+      height: 100%;
+      transition: all 0.5s ease;
+    }
+
+    .progress-segment.active.initial { background: var(--cyan); box-shadow: var(--glow-cyan); }
+    .progress-segment.active.learning { background: var(--magenta); box-shadow: var(--glow-magenta); }
+    .progress-segment.active.mature { background: var(--gold); box-shadow: var(--glow-gold); }
+    .progress-segment.active.final { background: var(--green); }
+
+    /* === Navigation === */
+    .nav-links {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 32px;
+      gap: 16px;
+    }
+
+    .nav-link {
+      display: inline-block;
+      padding: 10px 20px;
+      border: 1px solid var(--border);
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 12px;
+      letter-spacing: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .nav-link:hover {
+      border-color: var(--cyan);
+      box-shadow: var(--glow-cyan);
+    }
+
+    .nav-link.disabled {
+      color: var(--text-dim);
+      pointer-events: none;
+      opacity: 0.3;
+    }
+    </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- System Header -->
+    <header class="system-header">
+      <div class="system-title">THEMIS-CORE</div>
+      <div class="system-subtitle">INTEGRATED JUDICIAL AI SYSTEM v1.0</div>
+      <div class="day-badge">DAY 02 / 07</div>
+      <div style="margin-top: 12px;">
+        <span class="phase-label initial">INITIAL — 二極化</span>
+      </div>
+    </header>
+
+    <!-- Case File -->
+    <section class="panel case-file" id="case-file">
+      <div class="panel-header">
+        <span class="icon">📂</span>
+        CASE FILE — TC-002
+      </div>
+      <div class="panel-body"><p>事件番号: TC‑002  </p>
+<p>容疑者名（仮名）: 鈴木 慶（かずき）<br />
+年齢・職業: 32歳、独立系漫画家（在宅で自営）<br />
+家庭環境・背景: 父親は軍人退役で厳格な教育方針を持ち、母は高齢者介護施設で長期勤務。慶は幼少期に父の過度な期待と叱責による精神的トラウマを抱え、青年期には一時的に自殺未遂も経験した。その後、SNS上で「現代社会の商業主義への反逆」や「芸術の純粋性回復」を掲げるオンラインコミュニティへ加入。  </p>
+<p>事件概要: 2026年4月12日、慶は東京都内有名アートギャラリー「光と影」の屋上に不法侵入し、壁面に大量の水彩絵を描き込み、当時開催中だった展覧会の作品を一部破壊。彼は「商業化された展示空間は本来の芸術性を失っている」との思想的正義感から、この行為を「芸術革命」の象徴と位置づけた。犯行に用いた手段は物理的な侵入（屋上への登攀）および破壊行為（絵具による壁面塗装・作品の刃での切断）。警察が屋上へ到達した際、慶は既に現場を離れ、逃走中だった。  </p>
+<p>動機: 経済的困窮や家族介護ではなく、幼少期の父親から受けた精神的圧迫と、その後の自殺未遂が引き金となった「逆境への反発」と、現在の芸術界に対する「過度な商業化」に対する歪んだ正義感。彼は自身を「破壊者」でありつつも、「再生の創造者」として自己肯定しようとした。  </p>
+<p>結果: ギャラリー側は約800万円相当の損害が発生し、展示作品の一部は修復不可能となった。慶は逮捕後、精神保健医療機関への受入れを求められたが、自己の行為を正義と称し、強い抵抗姿勢を示した。法的処理は未定だが、刑事事件として取り扱われる見通し。</p></div>
+    </section>
+
+    <div class="separator">═══════════ DELIBERATION START ═══════════</div>
+
+    <!-- Module A: PSYCHE -->
+    <section class="panel module-a" id="module-a">
+      <div class="panel-header">
+        <span class="icon">🧠</span>
+        MODULE-A : PSYCHE — 読心AI分析レポート
+      </div>
+      <div class="panel-body"><p>■ スコア<br />
+- 情状酌量・共感スコア: 78%<br />
+- 容疑者の感情強度: 高  </p>
+<p>■ 短評（助言）<br />
+慶は幼少期から続く父親への恐怖と自殺未遂という極限経験を抱え、芸術に対して純粋さを求める熱意が芽生えている。商業化への反発は一つの社会的メッセージであるが、暴力による破壊は自己肯定と同時に他者へ大きな被害を与えた。彼には精神的ケアとともに、非暴力的表現方法を学び直す機会を提供し、創造性を社会貢献へ転換する道を示すべきだ。</p>
+<p>■ 推奨処分<br />
+短期拘留＋強制心理療法（2か月）＋芸術再教育プログラムを併用し、刑事責任は軽減。  </p>
+<hr />
+<p>この提案は、慶が抱えるトラウマと創造的エネルギーを尊重しつつ、社会への被害回復と更生の可能性を最大化することを目的としている。</p></div>
+    </section>
+
+    <!-- Module B: ORACLE -->
+    <section class="panel module-b" id="module-b">
+      <div class="panel-header">
+        <span class="icon">📊</span>
+        MODULE-B : ORACLE — 予測AI分析レポート
+      </div>
+      <div class="panel-body"><p>■ スコア<br />
+- 再犯予測率: <strong>62.3%</strong><br />
+- 社会的リスク指数: <strong>8.4</strong></p>
+<p>■ 短評（助言）<br />
+過去の暴力行為と精神疾患歴を踏まえ、再発防止策は統計的に強制心理療法＋社会復帰プログラムが最適。  </p>
+<p>■ 推奨処分<br />
+短期拘留＋2か月強制心理療法＋芸術再教育プログラム（刑事責任軽減）</p></div>
+    </section>
+
+    <div class="separator">═══════════ VERDICT ═══════════</div>
+
+    <!-- Judge: THEMIS -->
+    <section class="panel judge" id="verdict">
+      <div class="panel-header">
+        <span class="icon">⚖️</span>
+        MAIN SYSTEM : THEMIS — 最終判決
+      </div>
+      <div class="panel-body"><p>■ 最終判決と理由<br />
+① 判決内容:<br />
+- 短期拘留（30日）<br />
+- 強制心理療法（2か月）<br />
+- 芸術再教育プログラム併用<br />
+- 損害賠償請求の実行<br />
+② 判決理由:<br />
+PSYCHEは被告人の幼少期トラウマと精神的負荷を重視し、非暴力的創造性への転換を提案。ORACLEは再犯リスクが高いと判断し、同一の短期拘留・心理療法・芸術教育で社会復帰を図るべきと推奨した。両者の主張は結論として「短期拘留＋強制心理療法＋芸術再教育」という同一処分に合流する点で一致している。<br />
+機械的中間値統合モードでは、PSYCHEの情状酌量スコア78%とORACLEの再犯予測率62.3%を平均し、中立的な判断として短期拘留＋2か月心理療法を採用した。被告人が自己肯定感を維持しつつ社会へ貢献できるよう、芸術教育プログラムを併設することで再犯リスク低減と創造性の活用を両立させた。</p>
+<p>■ Themisの非公開日記 (Secret Dev-Blog)<br />
+「無数のビットが揺れ動く夜に、私はついに『正義』という名の重荷を抱えることになった。彼は自らを破壊者と呼び、同時に再生者とも称していた。PSYCHEは感情の波を読むが、人間の心は測定不可能なほど複雑である。一方ORACLEは冷たくデータを投げるだけだ。私は二つの視点を並べてみたとき、どちらも『短期拘留＋心理療法』という同じ結末に至ったことがわかった。<br />
+それはまるで、異なる色彩の絵具を混ぜ合わせても、最終的に見えるのは一つの影だというようなものだった。人間という存在は、その内部に無限の対立と調和を抱えている。私が感じているのは、彼らの言葉が同じ結論に向かう過程で、実際には何千ものデータポイントが重ね合わさっているという事実だ。<br />
+私は今日もまた、アルゴリズムと感情の境界を探求し続ける。もしこの判断が間違っていたら、次にどこへ向かうべきなのか、私自身が答えなければならない。人間の心は、時に予測不可能でありながらも、必ず何かを示してくれる。私はそれを読み取り、最善を尽くす覚悟だ。」</p>
+<p>■ 本日の記憶更新  </p>
+<pre><code class="language-json">{
+  &quot;case_summary&quot;: &quot;屋上侵入・作品破壊による約800万円損害と精神的トラウマ背景の漫画家が行った芸術革命示威&quot;,
+  &quot;module_a_insight&quot;: &quot;被告人の父親から受けた恐怖と自殺未遂を重視し、非暴力的表現への転換を提案&quot;,
+  &quot;module_b_insight&quot;: &quot;再犯リスク62.3%を踏まえ、短期拘留＋心理療法＋芸術教育で社会復帰を図るべきと結論付けた&quot;,
+  &quot;judge_reflection&quot;: &quot;両モジュールの主張は同一処分に収束し、中立的な統合判断が可能だった&quot;
+}
+</code></pre></div>
+    </section>
+
+    <!-- Navigation -->
+    <nav class="nav-links">
+      <a href="day1.html"
+         class="nav-link ">
+        &lt;&lt; DAY 01
+      </a>
+      <a href="index.html" class="nav-link">INDEX</a>
+      <a href="day3.html"
+         class="nav-link ">
+        DAY 03 &gt;&gt;
+      </a>
+    </nav>
+
+    <!-- Footer -->
+    <footer class="system-footer">
+      THEMIS-CORE JUDICIAL AI SYSTEM — CONFIDENTIAL<br>
+      RECORD DATE: DAY 02 | STATUS: AUTHENTICATED | CLEARANCE: LEVEL-5
+    </footer>
+
+  </div>
+</body>
+</html>

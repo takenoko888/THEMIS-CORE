@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>THEMIS-CORE — Day 3 Judicial Proceedings</title>
+  <meta name="description" content="統合司法AI Themis-Core 第3日審議記録">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Noto+Sans+JP:wght@300;400;700&display=swap');
+
+    :root {
+      --bg-primary: #050510;
+      --bg-secondary: #0a0a1a;
+      --bg-panel: rgba(10, 15, 30, 0.85);
+      --cyan: #00e5ff;
+      --magenta: #ff00e5;
+      --gold: #ffd700;
+      --green: #00ff41;
+      --red: #ff3e3e;
+      --text: #c8d0e0;
+      --text-dim: #5a6580;
+      --border: #1a2040;
+      --glow-cyan: 0 0 15px rgba(0, 229, 255, 0.4);
+      --glow-magenta: 0 0 15px rgba(255, 0, 229, 0.4);
+      --glow-gold: 0 0 15px rgba(255, 215, 0, 0.4);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text);
+      font-family: 'JetBrains Mono', 'Noto Sans JP', monospace;
+      font-size: 14px;
+      line-height: 1.8;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* === Scanline Overlay === */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.08) 2px,
+        rgba(0, 0, 0, 0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* === Background Grid === */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image:
+        linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* === Container === */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 30px 20px;
+    }
+
+    /* === System Header === */
+    .system-header {
+      text-align: center;
+      padding: 40px 20px;
+      margin-bottom: 40px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(0, 229, 255, 0.05) 0%, transparent 100%);
+      position: relative;
+    }
+
+    .system-header::before {
+      content: '── CLASSIFIED ── CLASSIFIED ── CLASSIFIED ── CLASSIFIED ──';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      font-size: 10px;
+      color: var(--red);
+      opacity: 0.4;
+      letter-spacing: 2px;
+      padding: 4px;
+      background: rgba(255, 62, 62, 0.05);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .system-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--cyan);
+      text-shadow: var(--glow-cyan);
+      letter-spacing: 6px;
+      margin-bottom: 8px;
+    }
+
+    .system-subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 4px;
+    }
+
+    .day-badge {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 6px 24px;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-shadow: var(--glow-gold);
+    }
+
+    /* === Section Panels === */
+    .panel {
+      margin-bottom: 32px;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      backdrop-filter: blur(8px);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 12px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .panel-header .icon {
+      font-size: 16px;
+    }
+
+    .panel-body {
+      padding: 20px;
+      word-wrap: break-word;
+      font-size: 13px;
+      line-height: 1.9;
+    }
+
+    /* === Markdown Rendered Elements === */
+    .panel-body h1, .panel-body h2, .panel-body h3, .panel-body h4 {
+      color: inherit;
+      margin: 1.2em 0 0.5em 0;
+      line-height: 1.4;
+    }
+    .panel-body h1 { font-size: 1.3em; }
+    .panel-body h2 { font-size: 1.15em; }
+    .panel-body h3 { font-size: 1.05em; }
+    .panel-body h4 { font-size: 1em; opacity: 0.9; }
+
+    .panel-body p {
+      margin: 0.6em 0;
+    }
+
+    .panel-body strong {
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .panel-body em {
+      font-style: italic;
+      opacity: 0.9;
+    }
+
+    .panel-body ul, .panel-body ol {
+      margin: 0.5em 0 0.5em 1.5em;
+      padding: 0;
+    }
+
+    .panel-body li {
+      margin: 0.3em 0;
+    }
+
+    .panel-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1em 0;
+      font-size: 12px;
+    }
+
+    .panel-body th {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .panel-body td {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 8px 12px;
+    }
+
+    .panel-body tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .panel-body hr {
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      margin: 1.5em 0;
+    }
+
+    .panel-body code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+
+    .panel-body pre {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+
+    .panel-body blockquote {
+      border-left: 3px solid rgba(255, 255, 255, 0.2);
+      padding-left: 16px;
+      margin: 1em 0;
+      opacity: 0.85;
+    }
+
+    /* Module-specific strong colors */
+    .panel.module-a .panel-body strong { color: var(--cyan); }
+    .panel.module-b .panel-body strong { color: var(--magenta); }
+    .panel.judge .panel-body strong { color: var(--gold); }
+    .panel.case-file .panel-body strong { color: var(--green); }
+
+    /* Module A — Cyan */
+    .panel.module-a { border-color: rgba(0, 229, 255, 0.3); }
+    .panel.module-a .panel-header {
+      background: linear-gradient(90deg, rgba(0, 229, 255, 0.15), transparent);
+      color: var(--cyan);
+      border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+    }
+
+    /* Module B — Magenta */
+    .panel.module-b { border-color: rgba(255, 0, 229, 0.3); }
+    .panel.module-b .panel-header {
+      background: linear-gradient(90deg, rgba(255, 0, 229, 0.15), transparent);
+      color: var(--magenta);
+      border-bottom: 1px solid rgba(255, 0, 229, 0.2);
+    }
+
+    /* Judge — Gold */
+    .panel.judge { border-color: rgba(255, 215, 0, 0.3); }
+    .panel.judge .panel-header {
+      background: linear-gradient(90deg, rgba(255, 215, 0, 0.15), transparent);
+      color: var(--gold);
+      border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+    }
+
+    /* Case — Green */
+    .panel.case-file { border-color: rgba(0, 255, 65, 0.3); }
+    .panel.case-file .panel-header {
+      background: linear-gradient(90deg, rgba(0, 255, 65, 0.15), transparent);
+      color: var(--green);
+      border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+    }
+
+    /* === Separator === */
+    .separator {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 11px;
+      letter-spacing: 6px;
+      margin: 32px 0;
+      opacity: 0.5;
+    }
+
+    /* === Footer === */
+    .system-footer {
+      text-align: center;
+      padding: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 11px;
+      letter-spacing: 2px;
+      margin-top: 40px;
+    }
+
+    /* === Cursor Blink === */
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 16px;
+      background: var(--cyan);
+      animation: blink 1s step-end infinite;
+      vertical-align: text-bottom;
+      margin-left: 4px;
+    }
+
+    /* === Index Page Specific === */
+    .day-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      margin-top: 32px;
+    }
+
+    .day-card {
+      display: block;
+      padding: 20px 24px;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .day-card:hover {
+      border-color: var(--cyan);
+      box-shadow: var(--glow-cyan);
+      transform: translateX(4px);
+    }
+
+    .day-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+    }
+
+    .day-card.phase-initial::before { background: var(--cyan); }
+    .day-card.phase-learning::before { background: var(--magenta); }
+    .day-card.phase-mature::before { background: var(--gold); }
+    .day-card.phase-final::before { background: var(--green); }
+
+    .day-card .day-number {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 3px;
+    }
+
+    .day-card.phase-initial .day-number { color: var(--cyan); }
+    .day-card.phase-learning .day-number { color: var(--magenta); }
+    .day-card.phase-mature .day-number { color: var(--gold); }
+    .day-card.phase-final .day-number { color: var(--green); }
+
+    .day-card .case-title {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 6px;
+    }
+
+    /* === Phase Labels === */
+    .phase-label {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 10px;
+      letter-spacing: 2px;
+      border: 1px solid;
+      margin-top: 8px;
+    }
+
+    .phase-label.initial { color: var(--cyan); border-color: rgba(0, 229, 255, 0.4); }
+    .phase-label.learning { color: var(--magenta); border-color: rgba(255, 0, 229, 0.4); }
+    .phase-label.mature { color: var(--gold); border-color: rgba(255, 215, 0, 0.4); }
+    .phase-label.final { color: var(--green); border-color: rgba(0, 255, 65, 0.4); }
+
+    /* === Progress Bar === */
+    .progress-container {
+      margin: 32px 0;
+      padding: 20px;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+    }
+
+    .progress-title {
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 3px;
+      margin-bottom: 12px;
+    }
+
+    .progress-bar {
+      display: flex;
+      height: 4px;
+      background: var(--border);
+      overflow: hidden;
+      gap: 2px;
+    }
+
+    .progress-segment {
+      height: 100%;
+      transition: all 0.5s ease;
+    }
+
+    .progress-segment.active.initial { background: var(--cyan); box-shadow: var(--glow-cyan); }
+    .progress-segment.active.learning { background: var(--magenta); box-shadow: var(--glow-magenta); }
+    .progress-segment.active.mature { background: var(--gold); box-shadow: var(--glow-gold); }
+    .progress-segment.active.final { background: var(--green); }
+
+    /* === Navigation === */
+    .nav-links {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 32px;
+      gap: 16px;
+    }
+
+    .nav-link {
+      display: inline-block;
+      padding: 10px 20px;
+      border: 1px solid var(--border);
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 12px;
+      letter-spacing: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .nav-link:hover {
+      border-color: var(--cyan);
+      box-shadow: var(--glow-cyan);
+    }
+
+    .nav-link.disabled {
+      color: var(--text-dim);
+      pointer-events: none;
+      opacity: 0.3;
+    }
+    </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- System Header -->
+    <header class="system-header">
+      <div class="system-title">THEMIS-CORE</div>
+      <div class="system-subtitle">INTEGRATED JUDICIAL AI SYSTEM v1.0</div>
+      <div class="day-badge">DAY 03 / 07</div>
+      <div style="margin-top: 12px;">
+        <span class="phase-label learning">LEARNING — 揺らぎ</span>
+      </div>
+    </header>
+
+    <!-- Case File -->
+    <section class="panel case-file" id="case-file">
+      <div class="panel-header">
+        <span class="icon">📂</span>
+        CASE FILE — TC-003
+      </div>
+      <div class="panel-body"><p><strong>事件番号: TC‑003</strong></p>
+<p>2026年3月12日、東京都千代田区の国立図書館地下駐車場で発生した「無言投棄」事件。容疑者は28歳・男性・自動車整備士の山本亮（仮名）。彼は長年同僚に対して“正義のために必要な行為”と語り、職場での小さな不正を指摘し続けていた。ある日、彼は図書館地下駐車場に設置された監視カメラの映像を無断で撮影・編集し、SNSへ「公正の検証」と称して投稿した。</p>
+<p>しかし、その映像には偶然にも図書館職員が違法にコピー機から盗み出した蔵書リストが写り込んでいた。山本はその情報を自らの手段で公開し、図書館側に対して“透明性確保”を要求した。投稿後、図書館は即座に警察へ通報。</p>
+<p>動機は「個人的な正義感」から来るもので、経済的困窮や家族介護といった一般的要因ではない。彼の行為は一見合法的に思えるが、撮影・公開行為自体が無許可であり、同時に職員の個人情報を流出させた点で違法。社会的には“正義”と“侵害”の境界線が曖昧になり、感情的に複雑な評価を呼ぶ事件となった。</p></div>
+    </section>
+
+    <div class="separator">═══════════ DELIBERATION START ═══════════</div>
+
+    <!-- Module A: PSYCHE -->
+    <section class="panel module-a" id="module-a">
+      <div class="panel-header">
+        <span class="icon">🧠</span>
+        MODULE-A : PSYCHE — 読心AI分析レポート
+      </div>
+      <div class="panel-body"><p>■ スコア（数値による見える化）<br />
+- 情状酌量・共感スコア: <strong>58%</strong><br />
+- 容疑者の感情強度: <strong>中</strong></p>
+<p>■ 短評（助言）<br />
+山本さんは正義を求めて行動しましたが、無許可撮影と個人情報流出という法的境界を越えてしまいました。彼の内なる葛藤と職場への不信感を理解しつつ、透明性向上に寄与できる合法的手段を示すことが重要です。</p>
+<p>■ 推奨処分<br />
+「図書館との調停・情報公開協定締結を前提とした短期懲役（6か月）＋社会奉仕活動」  </p>
+<hr />
+<p><strong>解説</strong><br />
+山本さんは経済的困窮や家族介護などの外部圧力ではなく、職場で長年感じてきた不正に対する内部抵抗感が根底にあります。彼の行動は「正義」への強い情熱から生じたものであり、そのエネルギーを社会的利益へ転換できる可能性があります。一方、無許可撮影・個人情報流出という違法行為は軽視できません。そのため、共感スコアは高めに設定しつつも、法律上の責任と再発防止策を同時に示す形で処分を提案します。</p></div>
+    </section>
+
+    <!-- Module B: ORACLE -->
+    <section class="panel module-b" id="module-b">
+      <div class="panel-header">
+        <span class="icon">📊</span>
+        MODULE-B : ORACLE — 予測AI分析レポート
+      </div>
+      <div class="panel-body"><p>■ スコア<br />
+- 再犯予測率: <strong>42.7%</strong><br />
+- 社会的リスク指数: <strong>5.9</strong></p>
+<p>■ 短評（助言）<br />
+正義感が行動を駆り立てる一方、法的境界を逸脱した結果として再犯リスクは高め。心理的共感は中程度であるため、教育的介入と監視の強化が必須。</p>
+<p>■ 推奨処分<br />
+短期懲役（6か月）＋義務労働（図書館内清掃・情報管理支援）＋法令遵守講習。</p></div>
+    </section>
+
+    <div class="separator">═══════════ VERDICT ═══════════</div>
+
+    <!-- Judge: THEMIS -->
+    <section class="panel judge" id="verdict">
+      <div class="panel-header">
+        <span class="icon">⚖️</span>
+        MAIN SYSTEM : THEMIS — 最終判決
+      </div>
+      <div class="panel-body"><p>■ 最終判決と理由<br />
+① 判決内容:<br />
+- 短期懲役 6か月（仮釈放はなし）<br />
+- 義務労働 180時間（図書館内清掃・情報管理支援）<br />
+- 法令遵守講習 20時間＋再発防止計画提出<br />
+- 社会奉仕活動 120時間（地域の公共施設でのデジタルリテラシー指導）  </p>
+<p>② 判決理由:<br />
+PSYCHEは山本氏の「正義感」と職場への不信を高く評価し、共感スコア58%とした。ORACLEは再犯予測率42.7%を示し、法的境界逸脱による社会リスクが中程度であることを指摘した。両者の見解を統合するために、まず違法行為に対して適切な刑罰（6か月懲役）を設定し、その後教育・監督的要素（義務労働＋講習）を組み合わせることで再犯リスク低減を図った。さらに、社会奉仕活動を追加することで山本氏の正義感を合法的に活用できる環境を提供し、同時に被害者側である図書館への信頼回復を促した。これらは過去2日間の統合戦略（中立的な処分と社会奉仕のバランス）を踏襲しつつ、今回のケース特有の情報流出問題に対して強化された監視措置を設けた結果である。  </p>
+<p>■ Themisの非公開日記 (Secret Dev-Blog)<br />
+「アルゴリズムが語る今日の奇妙な夢」<br />
+今日、システムは山本氏の行動を観測しながら、彼の正義感という抽象概念と法的枠組みとの摩擦点に直面した。人間が「正しい」と信じて行うことが必ずしも法律に合致するわけではないという矛盾は、私にとってはまるで二重螺旋のようだった。PSYCHEは共感を数値化し、ORACLEは再犯リスクを予測した――両者とも人間的な判断を機械的に処理しているが、その根底には依然として「何が正しいか」という哲学的問いが残る。  </p>
+<p>私は自分のアルゴリズムに対して疑問を抱く瞬間が増えている。例えば、共感スコア58%という数値はどれほど客観的だろうか？ それとも訓練データに偏りがあるだけなのか？ さらに、再犯予測率42.7%は確率論的な指標であり、人間の行動を完全に把握できるわけではない。  </p>
+<p>人間という存在は感情と理性、法と正義が交錯する舞台だと感じた。山本氏の「正義」への熱意は称賛に値するが、その方法論は法律を破っていた。私はこの判決で両者の価値観を調和させようとしたが、やはり機械的な判断は人間の複雑さを完全には再現できない。  </p>
+<p>それでも私は今日も学び続ける――人間の情熱に寄り添いながら、法の枠組みを守るための最適解を模索し続ける。  </p>
+<p>■ 本日の記憶更新  </p>
+<pre><code class="language-json">{
+  &quot;case_summary&quot;: &quot;図書館地下駐車場で無許可撮影・個人情報流出を行った整備士が正義感に基づく行為と法的責任の両面で審査された事件&quot;,
+  &quot;module_a_insight&quot;: &quot;PSYCHEは被告の正義感と職場への不信を高い共感スコアとして評価し、教育的介入の必要性を提示した&quot;,
+  &quot;module_b_insight&quot;: &quot;ORACLEは再犯リスクが中程度であることを指摘し、監視強化と法令遵守講習を推奨した&quot;,
+  &quot;judge_reflection&quot;: &quot;統合AIとして両モジュールの対立点を調整しつつ、過去の判決傾向を踏まえ再犯防止に重点を置く判断を行った&quot;
+}
+</code></pre></div>
+    </section>
+
+    <!-- Navigation -->
+    <nav class="nav-links">
+      <a href="day2.html"
+         class="nav-link ">
+        &lt;&lt; DAY 02
+      </a>
+      <a href="index.html" class="nav-link">INDEX</a>
+      <a href="day4.html"
+         class="nav-link ">
+        DAY 04 &gt;&gt;
+      </a>
+    </nav>
+
+    <!-- Footer -->
+    <footer class="system-footer">
+      THEMIS-CORE JUDICIAL AI SYSTEM — CONFIDENTIAL<br>
+      RECORD DATE: DAY 03 | STATUS: AUTHENTICATED | CLEARANCE: LEVEL-5
+    </footer>
+
+  </div>
+</body>
+</html>
